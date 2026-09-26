@@ -66,7 +66,7 @@ def run(save=True):
     all_tickers = sorted(full_history["Ma_Co_Phieu"].dropna().astype(str).str.upper().unique())
     log(f"2/5 Cập nhật giá {len(all_tickers) + 1} mã (chỉ tải ngày còn thiếu)...")
     price_frames, price_stats = price_store.update_many(all_tickers + [config.BENCHMARK_SYMBOL])
-    log(f"   {price_store.describe_stats(price_stats)}")
+    log(f"   {price_store.describe_stats(price_stats)} | nguồn: {price_store.source_report()}")
     price_map = {t: sources.to_market_frame(df) for t, df in price_frames.items()}
     benchmark = price_map.get(config.BENCHMARK_SYMBOL)
     missing_price = [t for t in all_tickers if price_map.get(t) is None]
@@ -74,6 +74,13 @@ def run(save=True):
         warnings.append("Không có dữ liệu VNINDEX (beta sẽ trống)")
     if price_stats.get("failed"):
         warnings.append(f"Lỗi cập nhật giá {len(price_stats['failed'])} mã (dùng dữ liệu cũ): {', '.join(price_stats['failed'][:10])}")
+    # Không có giá thì mọi mã đều bị loại vì thiếu thanh khoản → dừng hẳn thay vì xuất dashboard trống
+    usable_prices = sum(1 for t in all_tickers if price_map.get(t) is not None)
+    if usable_prices < len(all_tickers) * 0.5:
+        raise RuntimeError(
+            f"Chỉ có giá của {usable_prices}/{len(all_tickers)} mã — nguồn giá không truy cập được. "
+            "Kiểm tra kết nối tới SSI (máy chủ nước ngoài có thể bị chặn)."
+        )
 
     # 3) Dòng tiền theo kỳ báo cáo
     log(f"3/5 Tính dòng tiền theo kỳ báo cáo ({history['Snapshot_Stamp'].nunique() if not history.empty else 0} snapshot trước đó)...")
@@ -129,6 +136,7 @@ def run(save=True):
         "fetch": {k: v for k, v in fetch_report.items() if k != "failed"},
         "failed_funds": fetch_report["failed"],
         "prices": {k: len(v) for k, v in price_stats.items()},
+        "price_sources": price_store.source_report(),
         "flow": {k: v for k, v in flow_summary.items() if k != "funds"},
         "funds": flow_summary.get("funds", []),
         "tickers_scored": int(len(scored) - excluded),

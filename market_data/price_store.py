@@ -7,6 +7,11 @@ Mỗi lần cập nhật chỉ tải những ngày còn thiếu từ SSI:
   tránh bước nhảy giá giả tại điểm nối.
 - Nến của phiên đang giao dịch (trước 15:05) không được lưu.
 
+Hai nguồn giá, tự chuyển khi một nguồn bị chặn:
+- SSI iBoard: chạy được từ Việt Nam, bị chặn 403 với IP nước ngoài.
+- Vietcap (VCI): chạy được từ máy chủ nước ngoài (GitHub Actions).
+Nguồn nào lỗi liên tiếp sẽ bị bỏ qua cho các mã còn lại trong cùng lần chạy.
+
 Giá đơn vị nghìn VND, đã điều chỉnh.
 """
 
@@ -23,6 +28,8 @@ PRICE_DIR = ROOT_DIR / "data" / "prices"
 VN_TZ = "Asia/Ho_Chi_Minh"
 HISTORY_START = "2000-01-01"
 SSI_HISTORY_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
+VIETCAP_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap"
+MAX_SOURCE_FAILURES = 3   # một nguồn lỗi liên tiếp bấy nhiêu lần (chưa lần nào thành công) thì bỏ qua
 COLUMNS = ["time", "open", "high", "low", "close", "volume"]
 MARKET_CLOSE = (15, 5)
 OVERLAP_DAYS = 10
@@ -54,35 +61,122 @@ def last_complete_session(now=None):
     return day
 
 
-def fetch_ssi(ticker, start, end, retries=3):
-    """Tải nến ngày từ SSI trong [start, end]. Trả DataFrame (có thể rỗng) hoặc None nếu lỗi mạng."""
-    params = {
-        "resolution": "1D",
-        "symbol": ticker,
-        "from": int(pd.Timestamp(start).tz_localize(VN_TZ).timestamp()),
-        "to": int((pd.Timestamp(end) + pd.Timedelta(days=1)).tz_localize(VN_TZ).timestamp()),
-    }
+def _frame_from_arrays(times, opens, highs, lows, closes, volumes, price_divisor=1.0):
+    df = pd.DataFrame(
+        {
+            "time": pd.to_datetime([int(t) for t in times], unit="s", utc=True)
+            .tz_convert(VN_TZ)
+            .tz_localize(None)
+            .normalize(),
+            "open": pd.to_numeric(opens, errors="coerce") / price_divisor,
+            "high": pd.to_numeric(highs, errors="coerce") / price_divisor,
+            "low": pd.to_numeric(lows, errors="coerce") / price_divisor,
+            "close": pd.to_numeric(closes, errors="coerce") / price_divisor,
+            "volume": pd.to_numeric(volumes, errors="coerce"),
+        }
+    )
+    return df.dropna(subset=["close"]).drop_duplicates("time").sort_values("time").reset_index(drop=True)
+
+
+def parse_ssi(payload):
+    """SSI trả giá theo NGHÌN VND."""
+    data = (payload or {}).get("data") or {}
+    if not data.get("t"):
+        return pd.DataFrame(columns=COLUMNS)
+    return _frame_from_arrays(data["t"], data.get("o"), data.get("h"), data.get("l"), data.get("c"), data.get("v"))
+
+
+def parse_vietcap(payload):
+    """Vietcap trả giá theo VND → chia 1000 cho cùng đơn vị với SSI."""
+    rows = payload if isinstance(payload, list) else []
+    if not rows or not rows[0].get("t"):
+        return pd.DataFrame(columns=COLUMNS)
+    d = rows[0]
+    return _frame_from_arrays(d["t"], d.get("o"), d.get("h"), d.get("l"), d.get("c"), d.get("v"), price_divisor=1000.0)
+
+
+def _range(start, end):
+    return (
+        int(pd.Timestamp(start).tz_localize(VN_TZ).timestamp()),
+        int((pd.Timestamp(end) + pd.Timedelta(days=1)).tz_localize(VN_TZ).timestamp()),
+    )
+
+
+def fetch_ssi(ticker, start, end, retries=2):
+    """Nến ngày từ SSI iBoard. None nếu lỗi/bị chặn, DataFrame rỗng nếu mã không có dữ liệu."""
+    frm, to = _range(start, end)
+    params = {"resolution": "1D", "symbol": ticker, "from": frm, "to": to}
     for attempt in range(retries):
         try:
             resp = _session.get(SSI_HISTORY_URL, params=params, timeout=30)
             if resp.status_code == 200:
-                data = resp.json().get("data") or {}
-                if not data.get("t"):
-                    return pd.DataFrame(columns=COLUMNS)
-                df = pd.DataFrame(
-                    {
-                        "time": pd.to_datetime(data["t"], unit="s", utc=True).tz_convert(VN_TZ).tz_localize(None).normalize(),
-                        "open": pd.to_numeric(data.get("o"), errors="coerce"),
-                        "high": pd.to_numeric(data.get("h"), errors="coerce"),
-                        "low": pd.to_numeric(data.get("l"), errors="coerce"),
-                        "close": pd.to_numeric(data.get("c"), errors="coerce"),
-                        "volume": pd.to_numeric(data.get("v"), errors="coerce"),
-                    }
-                )
-                return df.dropna(subset=["close"]).drop_duplicates("time").sort_values("time").reset_index(drop=True)
+                return parse_ssi(resp.json())
+            if resp.status_code in (401, 403, 429):
+                return None  # bị chặn: thử lại cũng vô ích
         except (requests.RequestException, ValueError):
             pass
         time.sleep(1.5 * (attempt + 1))
+    return None
+
+
+def fetch_vietcap(ticker, start, end, retries=2):
+    """Nến ngày từ Vietcap (VCI)."""
+    frm, to = _range(start, end)
+    body = {"timeFrame": "ONE_DAY", "symbols": [ticker], "from": frm, "to": to}
+    for attempt in range(retries):
+        try:
+            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=30)
+            if resp.status_code == 200:
+                return parse_vietcap(resp.json())
+            if resp.status_code in (401, 403, 429):
+                return None
+        except (requests.RequestException, ValueError):
+            pass
+        time.sleep(1.5 * (attempt + 1))
+    return None
+
+
+FETCHERS = {"ssi": fetch_ssi, "vietcap": fetch_vietcap}
+SOURCE_ORDER = ("ssi", "vietcap")
+_source_stats = {}
+
+
+def reset_sources():
+    with _locks_guard:
+        _source_stats.clear()
+
+
+def source_report():
+    with _locks_guard:
+        return {k: dict(v) for k, v in _source_stats.items()}
+
+
+def _usable_sources():
+    with _locks_guard:
+        stats = {k: dict(v) for k, v in _source_stats.items()}
+    ok = [n for n in SOURCE_ORDER if stats.get(n, {}).get("ok")]
+    chua_thu = [n for n in SOURCE_ORDER if n not in stats]
+    con_lai = [
+        n for n in SOURCE_ORDER
+        if n in stats and not stats[n].get("ok") and stats[n].get("loi", 0) < MAX_SOURCE_FAILURES
+    ]
+    return list(dict.fromkeys(ok + chua_thu + con_lai))
+
+
+def _ghi_nhan(name, thanh_cong):
+    with _locks_guard:
+        st = _source_stats.setdefault(name, {"ok": 0, "loi": 0})
+        st["ok" if thanh_cong else "loi"] += 1
+
+
+def fetch_auto(ticker, start, end):
+    """Thử lần lượt các nguồn còn dùng được; nguồn nào chạy được sẽ được ưu tiên cho mã sau."""
+    for name in _usable_sources():
+        df = FETCHERS[name](ticker, start, end)
+        if df is not None:
+            _ghi_nhan(name, True)
+            return df
+        _ghi_nhan(name, False)
     return None
 
 
@@ -103,9 +197,10 @@ def _save(ticker, df):
     df[COLUMNS].to_csv(path_for(ticker), index=False)
 
 
-def update_ticker(ticker, session_date=None, fetch=fetch_ssi, history_start=HISTORY_START):
+def update_ticker(ticker, session_date=None, fetch=None, history_start=HISTORY_START):
     """Cập nhật một mã. Trả (DataFrame | None, trạng thái)."""
     ticker = ticker.upper()
+    fetch = fetch or fetch_auto
     session_date = session_date or last_complete_session()
     today = now_vn().strftime("%Y-%m-%d")
     with _lock_for(ticker):
@@ -145,6 +240,7 @@ def update_ticker(ticker, session_date=None, fetch=fetch_ssi, history_start=HIST
 def update_many(tickers, workers=6, session_date=None):
     """Cập nhật nhiều mã song song. Trả (dict mã → DataFrame | None, thống kê trạng thái)."""
     session_date = session_date or last_complete_session()
+    reset_sources()   # mỗi lần chạy thử lại từ đầu: nguồn hôm qua bị chặn hôm nay có thể dùng được
     tickers = sorted({t.upper() for t in tickers if t})
     with ThreadPoolExecutor(max_workers=workers) as pool:
         results = list(pool.map(lambda t: (t, *update_ticker(t, session_date)), tickers))

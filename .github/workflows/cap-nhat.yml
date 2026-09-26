@@ -5,6 +5,12 @@ on:
     # 09:00 UTC = 16:00 giờ VN (sau khi thị trường đóng cửa), thứ 2 - thứ 6
     - cron: "0 9 * * 1-5"
   workflow_dispatch:        # cho phép bấm chạy tay trên GitHub
+  push:                     # chạy lại ngay khi sửa code pipeline
+    paths:
+      - "smart_money/**"
+      - "market_data/**"
+      - "updat_stock.py"
+      - ".github/workflows/cap-nhat.yml"
 
 permissions:
   contents: write           # để commit dữ liệu mới vào repo
@@ -42,11 +48,21 @@ jobs:
       - name: Chạy phân tích
         run: python updat_stock.py
 
-      - name: Kiểm tra đã có dữ liệu hôm nay
+      - name: Kiểm tra dữ liệu hôm nay có mã được chấm điểm
         run: |
           NGAY=$(TZ=Asia/Ho_Chi_Minh date +%F)
-          test -f "anal_stock/public/data/runs/$NGAY.json" || { echo "Thiếu dữ liệu ngày $NGAY"; exit 1; }
-          echo "OK: anal_stock/public/data/runs/$NGAY.json"
+          python - "$NGAY" <<'PY'
+          import json, sys, pathlib
+          ngay = sys.argv[1]
+          f = pathlib.Path(f"anal_stock/public/data/runs/{ngay}.json")
+          if not f.exists():
+              sys.exit(f"Thiếu file dữ liệu ngày {ngay}")
+          meta = json.loads(f.read_text(encoding="utf-8"))["meta"]
+          n = meta.get("tickers_scored") or 0
+          print(f"{ngay}: {n} mã được chấm điểm | cảnh báo: {meta.get('warnings')}")
+          if n < 10:
+              sys.exit(f"Chỉ có {n} mã được chấm điểm — dữ liệu hỏng, không deploy")
+          PY
 
       - name: Lưu kết quả vào repo
         run: |
