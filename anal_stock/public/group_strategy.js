@@ -1,4 +1,4 @@
-import { GROUPS, createTable, esc, fmt, fmtPct, fmtVnd, heatCell, loadData, num, renderStatus, scoreCell, signClass } from "./common.js?v=5.0.1";
+import { GROUPS, createTable, esc, fmt, fmtPct, fmtVnd, heatCell, loadData, num, renderStatus, scoreCell, signClass } from "./common.js?v=5.0.2";
 
 const $ = (id) => document.getElementById(id);
 const TOP_N = 15;

@@ -16,5 +16,3 @@ __pycache__/
 .pytest_cache/
 .env
 
-# Cau hinh Firebase cu: chua apiKey/URL database that, khong dua len repo public
-_archive/firebase/

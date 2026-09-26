@@ -15,14 +15,14 @@
 - [x] B3. Phân nhóm theo từ khoá ngành FMarket + Simplize
 - [x] B4. Công cụ IC `tools/evaluate_scores.py` (điểm cũ v3: IC 0.04, t=0.9 — không có ý nghĩa); trọng số v4 theo IC 3 & 14 năm
 
-## C. Chạy cục bộ (bỏ Firebase)
+## C. Chạy cục bộ & online
 - [x] C1. Kho giá dùng chung `data/prices/`: chỉ tải ngày thiếu, tự tải lại khi giá quá khứ bị điều chỉnh, không lưu nến chưa đóng cửa
-- [x] C2. Bỏ toàn bộ code Firebase; kết quả lưu `anal_stock/public/data/runs/{ngày}.json` + CSV
-- [x] C3. Chuyển 177 ngày điểm số từ Firebase về máy (đã kiểm tra IC khớp số liệu cũ)
+- [x] C2. Bỏ toàn bộ code cloud cũ; kết quả lưu `anal_stock/public/data/runs/{ngày}.json` + CSV
+- [x] C3. Nhập 177 ngày điểm số lịch sử về máy (đã kiểm tra IC khớp số liệu cũ)
 - [x] C4. `run.py` chạy tất cả + mở dashboard; `Chay_phan_tich.bat` bấm đúp là chạy
 - [x] C5. Lần chạy lặp lại trong ngày không tải lại giá (100/100 mã "đã đủ")
-- [x] C6. Cấu hình Firebase cũ chuyển vào `_archive/firebase/`
-- [ ] C7. **Bạn tự quyết**: dữ liệu vẫn còn trên Firebase (project `stock-trading-ad193`, có thể đang cho ghi công khai). Nếu không dùng nữa, vào Firebase Console xoá Realtime Database / Hosting hoặc xoá project
+- [x] C6. Đã xoá toàn bộ cấu hình và code Firebase khỏi dự án
+- [ ] C7. **Bạn làm nốt**: database trên cloud vẫn còn (project `stock-trading-ad193`, đang đọc được công khai) — vào Firebase Console xoá Realtime Database / Hosting hoặc xoá cả project
 
 ## D. Dashboard
 - [x] D1. Đọc file cục bộ (tải ~0,1 giây), ô chọn ngày xem lại lịch sử, giữ ngày khi chuyển trang

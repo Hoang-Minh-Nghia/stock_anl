@@ -213,6 +213,12 @@ export function renderDatePicker(container, data) {
   });
 }
 
+/** Tên mô hình hiển thị cho người đọc. */
+export function modelLabel(version) {
+  if (!version) return "--";
+  return String(version).startsWith("v3") ? "v3 (cũ)" : version;
+}
+
 export function renderStatus(container, alertBox, data) {
   if (!container) return;
   renderDatePicker(document.getElementById("date-picker"), data);
@@ -241,9 +247,9 @@ export function renderStatus(container, alertBox, data) {
     const css = f.funds_failed ? "warn" : "ok";
     pills.push(`<span class="pill ${css}" title="Số quỹ có nắm cổ phiếu trên FMarket">Quỹ nắm cổ phiếu: ${esc(f.funds_live)}${f.funds_failed ? ` · lỗi ${esc(f.funds_failed)}` : ""}</span>`);
   }
-  if (data.meta.model_version) pills.push(`<span class="pill">Mô hình ${esc(data.meta.model_version)}</span>`);
+  if (data.meta.model_version) pills.push(`<span class="pill">Mô hình ${esc(modelLabel(data.meta.model_version))}</span>`);
   if (data.meta.legacy || data.stocks.some((s) => s.isLegacy)) {
-    warnings.push("Ngày này dùng mô hình cũ (v3, chuyển về từ Firebase) — nhiều cột nhân tố và dòng tiền theo kỳ sẽ trống.");
+    warnings.push("Ngày này dùng mô hình chấm điểm cũ (v3) — nhiều cột nhân tố và dòng tiền theo kỳ sẽ trống.");
   }
   if (isLatest && ageDays > 7) warnings.push(`Dữ liệu đã cũ ${ageDays} ngày — chạy "python run.py" để cập nhật.`);
 

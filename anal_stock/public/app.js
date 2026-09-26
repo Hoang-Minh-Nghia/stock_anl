@@ -1,7 +1,7 @@
 import {
   FACTORS, FLOW_STATUS, PALETTE, applyChartDefaults, createTable, esc, fmt, fmtPct, fmtVnd, groupTag, GROUPS,
-  heatCell, loadData, loadHistory, num, renderStatus, scoreCell, signClass,
-} from "./common.js?v=5.0.1";
+  heatCell, loadData, loadHistory, modelLabel, num, renderStatus, scoreCell, signClass,
+} from "./common.js?v=5.0.2";
 
 const $ = (id) => document.getElementById(id);
 const state = { data: null, rows: [] };
@@ -104,7 +104,7 @@ function renderTrend(history, data) {
   if (usable.length < 2) {
     $("trend-hint").textContent = "Chưa đủ lịch sử cho mô hình hiện tại — mỗi lần chạy sẽ thêm 1 ngày";
   } else {
-    $("trend-hint").textContent = `${usable.length} ngày (mô hình ${model}) · top 10 của ngày đang xem`;
+    $("trend-hint").textContent = `${usable.length} ngày (mô hình ${modelLabel(model)}) · top 10 của ngày đang xem`;
   }
   if (!window.Chart) return;
   applyChartDefaults();

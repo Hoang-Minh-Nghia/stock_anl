@@ -1,6 +1,6 @@
 import {
   FLOW_STATUS, applyChartDefaults, createTable, esc, fmt, fmtPct, fmtVnd, loadData, num, renderStatus, signClass,
-} from "./common.js?v=5.0.1";
+} from "./common.js?v=5.0.2";
 
 const $ = (id) => document.getElementById(id);
 let chart = null;

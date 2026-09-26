@@ -40,7 +40,7 @@ Dashboard có ô **chọn ngày** để xem lại kết quả các ngày trướ
 | `anal_stock/public/data/` | Dữ liệu dashboard: `runs/{ngày}.json`, `index.json`, `score_history.json` |
 | `ai_stock/data/`, `ai_stock/models/` | Dữ liệu & mô hình AI, `predictions_latest.csv` |
 
-Lịch sử 177 ngày điểm số (03–09/2026, mô hình cũ v3) đã được chuyển từ Firebase về `anal_stock/public/data/runs/`.
+Lịch sử 177 ngày điểm số (03–09/2026) chạy bằng mô hình cũ v3, đã được nhập sẵn vào `anal_stock/public/data/runs/`.
 
 ## Smart Money
 
@@ -75,7 +75,6 @@ python -m pytest
 
 ## Lưu trữ
 - `_backup/2026-09-15_truoc_nang_cap/` — mã nguồn + giá gốc trước khi nâng cấp
-- `_archive/firebase/` — cấu hình Firebase cũ + script đã dùng để chuyển dữ liệu về máy
 - `_archive/dnse/` — client DNSE LightSpeed API (dùng khi có API key)
 
 ## Chạy online (không cần mở máy)
