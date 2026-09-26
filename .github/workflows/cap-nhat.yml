@@ -11,6 +11,9 @@ on:
       - "market_data/**"
       - "updat_stock.py"
       - ".github/workflows/cap-nhat.yml"
+      - "anal_stock/public/*.html"
+      - "anal_stock/public/*.js"
+      - "anal_stock/public/*.css"
 
 permissions:
   contents: write           # để commit dữ liệu mới vào repo
