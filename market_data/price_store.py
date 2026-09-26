@@ -29,7 +29,8 @@ VN_TZ = "Asia/Ho_Chi_Minh"
 HISTORY_START = "2000-01-01"
 SSI_HISTORY_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
 VIETCAP_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap"
-MAX_SOURCE_FAILURES = 3   # một nguồn lỗi liên tiếp bấy nhiêu lần (chưa lần nào thành công) thì bỏ qua
+MAX_SOURCE_FAILURES = 3
+MAX_UPDATE_SECONDS = 600  # tổng thời gian tối đa cho bước cập nhật giá   # một nguồn lỗi liên tiếp bấy nhiêu lần (chưa lần nào thành công) thì bỏ qua
 COLUMNS = ["time", "open", "high", "low", "close", "volume"]
 MARKET_CLOSE = (15, 5)
 OVERLAP_DAYS = 10
@@ -119,7 +120,7 @@ def fetch_ssi(ticker, start, end, retries=2):
     return None
 
 
-def fetch_vietcap(ticker, start, end, retries=3):
+def fetch_vietcap(ticker, start, end, retries=2):
     """Nến ngày từ Vietcap (VCI).
 
     Vietcap giới hạn theo tần suất gọi: gọi dồn dập sẽ bị từ chối. Vì vậy chờ giữa các lần thử
@@ -129,15 +130,34 @@ def fetch_vietcap(ticker, start, end, retries=3):
     body = {"timeFrame": "ONE_DAY", "symbols": [ticker], "from": frm, "to": to}
     for attempt in range(retries):
         try:
-            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=45)
+            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=20)
             if resp.status_code == 200:
                 return parse_vietcap(resp.json())
             if resp.status_code in (401, 403):
                 return None          # bị chặn hẳn, thử lại vô ích
         except (requests.RequestException, ValueError):
             pass                     # quá hạn / lỗi mạng → nghỉ rồi thử lại
-        time.sleep(3 * (attempt + 1))
+        time.sleep(2 * (attempt + 1))
     return None
+
+
+# Giãn cách tối thiểu giữa 2 request tới cùng một nguồn (giây).
+# Vietcap chặn theo tần suất: gọi dồn dập sẽ bị từ chối, gọi giãn ~0.35s thì ổn định.
+MIN_INTERVAL = {"ssi": 0.0, "vietcap": 0.35}
+_last_call = {}
+_rate_lock = threading.Lock()
+
+
+def _throttle(name):
+    cho = 0.0
+    with _rate_lock:
+        khoang = MIN_INTERVAL.get(name, 0.0)
+        if khoang:
+            truoc = _last_call.get(name, 0.0)
+            cho = max(0.0, truoc + khoang - time.monotonic())
+            _last_call[name] = time.monotonic() + cho
+    if cho:
+        time.sleep(cho)
 
 
 FETCHERS = {"ssi": fetch_ssi, "vietcap": fetch_vietcap}
@@ -176,6 +196,7 @@ def _ghi_nhan(name, thanh_cong):
 def fetch_auto(ticker, start, end):
     """Thử lần lượt các nguồn còn dùng được; nguồn nào chạy được sẽ được ưu tiên cho mã sau."""
     for name in _usable_sources():
+        _throttle(name)
         df = FETCHERS[name](ticker, start, end)
         if df is not None:
             _ghi_nhan(name, True)
@@ -250,8 +271,15 @@ def update_many(tickers, workers=4, session_date=None, history_start=HISTORY_STA
     session_date = session_date or last_complete_session()
     reset_sources()   # mỗi lần chạy thử lại từ đầu: nguồn hôm qua bị chặn hôm nay có thể dùng được
     tickers = sorted({t.upper() for t in tickers if t})
+    han_chot = time.monotonic() + MAX_UPDATE_SECONDS
+
+    def mot_ma(t):
+        if time.monotonic() > han_chot:   # hết giờ: giữ dữ liệu cũ, không để job treo
+            return (t, load(t), "qua_gio")
+        return (t, *update_ticker(t, session_date, history_start=history_start))
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        results = list(pool.map(lambda t: (t, *update_ticker(t, session_date, history_start=history_start)), tickers))
+        results = list(pool.map(mot_ma, tickers))
     frames = {t: df for t, df, _ in results}
     stats = {}
     for t, _, status in results:
@@ -268,6 +296,7 @@ def describe_stats(stats):
         "readjusted": "tải lại do điều chỉnh giá",
         "failed": "lỗi",
         "empty": "không có dữ liệu",
+        "qua_gio": "bỏ qua do hết thời gian",
     }
     return ", ".join(f"{labels.get(k, k)} {len(v)}" for k, v in sorted(stats.items()))
 

@@ -19,11 +19,12 @@ permissions:
 
 concurrency:
   group: cap-nhat
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   cap-nhat-du-lieu:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 

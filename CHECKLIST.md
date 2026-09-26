@@ -24,6 +24,12 @@
 - [x] C6. Đã xoá toàn bộ cấu hình và code Firebase khỏi dự án
 - [ ] C7. **Bạn làm nốt**: database trên cloud vẫn còn (project `stock-trading-ad193`, đang đọc được công khai) — vào Firebase Console xoá Realtime Database / Hosting hoặc xoá cả project
 
+## C2. Chạy online (GitHub Actions + Pages)
+- [x] Workflow chạy 16:00 giờ VN các ngày trong tuần, commit dữ liệu vào repo, deploy GitHub Pages
+- [x] Kho giá 2 nguồn: SSI (chạy ở VN) ↔ Vietcap (chạy được từ máy chủ nước ngoài), tự chuyển khi bị chặn
+- [x] Chốt chặn: dưới 50% mã có giá → pipeline dừng; dưới 10 mã được chấm điểm → không deploy
+- [x] Workflow `kiem-tra-nguon.yml` để dò nguồn nào gọi được từ GitHub (kết quả ghi ra `ket-qua-do-nguon.txt`)
+
 ## D. Dashboard
 - [x] D1. Đọc file cục bộ (tải ~0,1 giây), ô chọn ngày xem lại lịch sử, giữ ngày khi chuyển trang
 - [x] D2. Chống XSS, CSS/JS dùng chung, bảng sort riêng, tìm kiếm/lọc, bảng chi tiết từng mã

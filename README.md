@@ -23,7 +23,9 @@ python run.py --no-ai       # bỏ qua phần AI (nhanh hơn, ~30 giây)
 ```
 
 Mỗi lần chạy:
-1. **Giá** (SSI) — chỉ tải những ngày còn thiếu vào `data/prices/`. Nếu SSI điều chỉnh giá quá khứ (cổ tức, thưởng CP), mã đó được tải lại toàn bộ để không có bước nhảy giá giả. Nến của phiên chưa đóng cửa (trước 15:05) không được lưu.
+1. **Giá** (SSI hoặc Vietcap) — chỉ tải những ngày còn thiếu vào `data/prices/`. Hai nguồn tự chuyển cho nhau:
+   SSI chạy được từ Việt Nam nhưng **chặn IP nước ngoài (403)**, Vietcap thì ngược lại — nhờ vậy cùng một code
+   chạy được cả trên máy lẫn trên GitHub Actions. Giá hai nguồn lệch trung bình 0,1% và các phiên gần đây trùng khớp. Nếu SSI điều chỉnh giá quá khứ (cổ tức, thưởng CP), mã đó được tải lại toàn bộ để không có bước nhảy giá giả. Nến của phiên chưa đóng cửa (trước 15:05) không được lưu.
 2. **Danh mục quỹ** (FMarket) — lưu snapshot của ngày. FMarket **chỉ có danh mục hiện tại**, không lấy lại được ngày đã qua; nhưng danh mục chỉ đổi theo kỳ báo cáo (~hàng tháng), nên **chạy ít nhất mỗi tuần 1 lần** là không bỏ lỡ kỳ nào. Dashboard sẽ cảnh báo nếu hai lần chạy cách nhau quá 35 ngày.
 3. **Dữ liệu cơ bản** (Simplize) → chấm điểm → lưu kết quả của ngày.
 4. **AI** — cập nhật chỉ báo và dự báo nếu đã huấn luyện mô hình.
@@ -88,7 +90,8 @@ Không cần database, không cần backend, không cần secret nào.
 | Lưu trữ lịch sử | Chính repo (`data/`, `anal_stock/public/data/`) | Miễn phí |
 | Dashboard | GitHub Pages | Miễn phí |
 
-Kho giá `data/prices/` **không** nằm trong repo; GitHub Actions dùng cache, mất cache thì tải lại từ SSI (~20 giây).
+Kho giá `data/prices/` **không** nằm trong repo; GitHub Actions dùng cache, mất cache thì tải lại (~1 phút).
+Trên GitHub chỉ tải 3 năm gần nhất (đủ cho mọi chỉ số của Smart Money) vì Vietcap giới hạn tần suất gọi.
 
 ### Các bước đưa lên online
 
