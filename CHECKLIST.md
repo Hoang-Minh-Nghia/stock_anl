@@ -27,6 +27,7 @@
 ## C2. Chạy online (GitHub Actions + Pages)
 - [x] Workflow chạy 16:00 giờ VN các ngày trong tuần, commit dữ liệu vào repo, deploy GitHub Pages
 - [x] Kho giá 2 nguồn: SSI (chạy ở VN) ↔ Vietcap (chạy được từ máy chủ nước ngoài), tự chuyển khi bị chặn
+- [x] Lấy giá theo lô 30 mã/request (Vietcap chặn theo số lượt gọi): 79 mã + lịch sử từ 2000 trong ~9 giây
 - [x] Chốt chặn: dưới 50% mã có giá → pipeline dừng; dưới 10 mã được chấm điểm → không deploy
 - [x] Workflow `kiem-tra-nguon.yml` để dò nguồn nào gọi được từ GitHub (kết quả ghi ra `ket-qua-do-nguon.txt`)
 

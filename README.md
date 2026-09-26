@@ -90,8 +90,10 @@ Không cần database, không cần backend, không cần secret nào.
 | Lưu trữ lịch sử | Chính repo (`data/`, `anal_stock/public/data/`) | Miễn phí |
 | Dashboard | GitHub Pages | Miễn phí |
 
-Kho giá `data/prices/` **không** nằm trong repo; GitHub Actions dùng cache, mất cache thì tải lại (~1 phút).
-Trên GitHub chỉ tải 3 năm gần nhất (đủ cho mọi chỉ số của Smart Money) vì Vietcap giới hạn tần suất gọi.
+Kho giá `data/prices/` **không** nằm trong repo; GitHub Actions dùng cache, mất cache thì tải lại (~10 giây).
+
+Vietcap giới hạn **số lượt gọi** chứ không giới hạn dung lượng, nên kho giá lấy **30 mã trong một request**:
+90 mã chỉ tốn 3 lượt thay vì 90 lượt. Đây là điều kiện bắt buộc để chạy được trên GitHub.
 
 ### Các bước đưa lên online
 
