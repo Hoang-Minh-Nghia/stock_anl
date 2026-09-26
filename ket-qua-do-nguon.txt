@@ -1,10 +1,5 @@
-IP: 57.154.13.114
-
-SSI      1 ma: None (loi/chan) trong 5.2s
-Vietcap  1 ma: 179 nen trong 3.3s
-Vietcap  12 ma tuan tu: ok=12 loi=0 trong 2.9s
-SSI      12 ma tuan tu: ok=0 loi=12 trong 0.2s
-
-update_many 6 luong, lich su day du: 133.6s
-  ket qua: {'failed': 8, 'full': 4}
-  nguon: {'ssi': {'ok': 0, 'loi': 6}, 'vietcap': {'ok': 4, 'loi': 8}}
+Tuan tu,  tu 2024 (2 nam)                            loi=0/12 | nen toi da=678 | 6.1s
+Tuan tu,  tu 2000 (day du)                           loi=1/12 | nen toi da=5155 | 104.4s
+3 luong,  tu 2000 (day du)                           loi=4/12 | nen toi da=5155 | 132.9s
+6 luong,  tu 2000 (day du)                           loi=4/12 | nen toi da=4943 | 66.0s
+6 luong,  tu 2024 (2 nam)                            loi=3/12 | nen toi da=678 | 65.7s
