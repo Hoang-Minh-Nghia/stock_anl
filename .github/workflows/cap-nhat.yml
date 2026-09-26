@@ -37,8 +37,16 @@ jobs:
           key: prices-${{ github.run_id }}
           restore-keys: prices-
 
+      # Dùng updat_stock.py (không phải run.py) để job BÁO LỖI khi lấy dữ liệu thất bại,
+      # GitHub sẽ gửi email và dashboard cũ không bị ghi đè bằng dữ liệu hỏng.
       - name: Chạy phân tích
-        run: python run.py --no-ai
+        run: python updat_stock.py
+
+      - name: Kiểm tra đã có dữ liệu hôm nay
+        run: |
+          NGAY=$(TZ=Asia/Ho_Chi_Minh date +%F)
+          test -f "anal_stock/public/data/runs/$NGAY.json" || { echo "Thiếu dữ liệu ngày $NGAY"; exit 1; }
+          echo "OK: anal_stock/public/data/runs/$NGAY.json"
 
       - name: Lưu kết quả vào repo
         run: |

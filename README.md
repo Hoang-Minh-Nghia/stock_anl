@@ -77,3 +77,35 @@ python -m pytest
 - `_backup/2026-09-15_truoc_nang_cap/` — mã nguồn + giá gốc trước khi nâng cấp
 - `_archive/firebase/` — cấu hình Firebase cũ + script đã dùng để chuyển dữ liệu về máy
 - `_archive/dnse/` — client DNSE LightSpeed API (dùng khi có API key)
+
+## Chạy online (không cần mở máy)
+
+Kiến trúc: **GitHub Actions (cron) → chạy pipeline → commit dữ liệu vào repo → GitHub Pages hiển thị**.
+Không cần database, không cần backend, không cần secret nào.
+
+| Thành phần | Nơi chạy | Chi phí |
+|---|---|---|
+| Thu thập + chấm điểm (`updat_stock.py`) | GitHub Actions, 16:00 giờ VN các ngày trong tuần | Miễn phí (~2 phút/lần) |
+| Lưu trữ lịch sử | Chính repo (`data/`, `anal_stock/public/data/`) | Miễn phí |
+| Dashboard | GitHub Pages | Miễn phí |
+
+Kho giá `data/prices/` **không** nằm trong repo; GitHub Actions dùng cache, mất cache thì tải lại từ SSI (~20 giây).
+
+### Các bước đưa lên online
+
+1. Tạo repo rỗng trên GitHub (Public để dùng Pages miễn phí).
+2. Đẩy code lên:
+   ```bash
+   git remote add origin https://github.com/<tên-của-bạn>/<tên-repo>.git
+   git push -u origin main
+   ```
+3. Repo → **Settings** → **Pages** → Source: **GitHub Actions**.
+4. Repo → **Settings** → **Actions** → **General** → Workflow permissions: **Read and write permissions**.
+5. Repo → **Actions** → workflow *Cập nhật dữ liệu & dashboard* → **Run workflow** để chạy thử.
+6. Xem log. Chạy xong, dashboard ở `https://<tên-của-bạn>.github.io/<tên-repo>/`.
+
+Sau đó hệ thống tự chạy hằng ngày. Khi workflow lỗi, GitHub gửi email báo.
+
+### Vẫn chạy được trên máy
+`python run.py --serve` vẫn hoạt động song song. Nhớ `git pull` trước để lấy dữ liệu mà Actions đã tạo,
+và `git push` nếu bạn chạy trên máy và muốn đẩy kết quả lên.
