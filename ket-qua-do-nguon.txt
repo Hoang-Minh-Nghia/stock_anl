@@ -1,18 +1,10 @@
-Do luc: Sat Sep 26 03:32:49 UTC 2026 | IP: 20.115.94.232 | US
+IP: 57.154.13.114
 
-SSI-history                  403|26524|1.025051
-    <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta name="viewport" content="width=device-widt
-SSI-time                     403|26524|3.753261
-    <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta name="viewport" content="width=device-widt
-TCBS-bars                    403|6107|0.226663
-    <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA
-VNDIRECT                     000|0|25.001187LOI|0|0
-    <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-equiv="X-UA
-Vietcap-chart                200|596|2.671672
-    ‹ÝTÉjAý—>Ei«ÅÇ\œc&ãÃdb°aÆ‰'Bþ=Zª{’/ÈE”T’ÞÓSu?þZ¾ÿ<¹œ–»åã§û%-—åî±”’QÔB÷s±sDâÚíÄÏ#2w·äçˆ Ùùì·Q;ë(–ó”–gâ¦·‘“`‚ƒcçÉÐ«‚Ä\	uÇ*CŒ
-FMarket                      200|21420|1.756679
-    {"status":200,"code":200,"time":1790393603762,"message":"ThÃ nh cÃ´ng","target":null,"data":{"page":1,"pageSize":5,"total":68,"rows":[{"id":89,"name":"QUá»¸ Äá
-Simplize                     200|428041|0.300665
-    <!DOCTYPE html><html lang="vi"><head><meta charSet="utf-8" data-next-head=""/><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scal
-CafeF-history                301|0|1.783643
-    
+SSI      1 ma: None (loi/chan) trong 5.2s
+Vietcap  1 ma: 179 nen trong 3.3s
+Vietcap  12 ma tuan tu: ok=12 loi=0 trong 2.9s
+SSI      12 ma tuan tu: ok=0 loi=12 trong 0.2s
+
+update_many 6 luong, lich su day du: 133.6s
+  ket qua: {'failed': 8, 'full': 4}
+  nguon: {'ssi': {'ok': 0, 'loi': 6}, 'vietcap': {'ok': 4, 'loi': 8}}
