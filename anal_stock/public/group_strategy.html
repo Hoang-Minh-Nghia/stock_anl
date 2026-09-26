@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nhóm chiến lược · Smart Money</title>
+  <meta name="color-scheme" content="dark" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=5.0.0">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">Smart<span>Money</span> VN</div>
+      <nav class="nav">
+        <a href="index.html">Xếp hạng</a>
+        <a href="flow.html">Dòng tiền quỹ</a>
+        <a class="active" href="group_strategy.html">Nhóm chiến lược</a>
+      </nav>
+      <div id="date-picker"></div>
+    </header>
+
+    <section class="hero">
+      <h1>Phân lớp danh mục theo nhóm chiến lược</h1>
+      <p>Phân nhóm theo đặc tính ngành (FMarket + Simplize) kết hợp ROE, tăng trưởng lợi nhuận, P/E và cổ tức. Mỗi nhóm hiển thị các mã điểm cao nhất.</p>
+      <div class="status-row" id="status"><span class="pill">Đang tải dữ liệu...</span></div>
+    </section>
+
+    <div class="alert" id="alert" hidden></div>
+
+    <section class="grid-3">
+      <article class="panel">
+        <div class="panel-head"><h2>Tỷ trọng nhóm</h2><span class="hint">Theo số mã được xếp hạng</span></div>
+        <div class="bars" id="bars"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><h2>Quy tắc phân nhóm</h2></div>
+        <div class="muted" style="line-height:1.7;font-size:13px">
+          1. <span class="tag a">Tấn công (chu kỳ)</span> ngân hàng, chứng khoán, bất động sản, xây dựng, vật liệu, kim loại, hoá chất, năng lượng<br>
+          2. <span class="tag g">Tăng trưởng</span> ROE ≥ 20%, hoặc ROE ≥ 15% và LNST tăng ≥ 15%<br>
+          3. <span class="tag d">Phòng thủ</span> tiện ích, điện, nước, dược, y tế, hàng thiết yếu, bảo hiểm; hoặc P/E &lt; 12 &amp; ROE &gt; 10%; hoặc cổ tức ≥ 4%<br>
+          4. <span class="tag n">Trung lập</span> còn lại
+        </div>
+      </article>
+    </section>
+
+    <section class="kpis section-gap" id="kpis"></section>
+
+    <section class="grid-2" id="groups"></section>
+
+    <footer>Phân nhóm là quy tắc tham khảo để cân bằng danh mục, không phải khuyến nghị đầu tư.</footer>
+  </div>
+
+  <script type="module" src="group_strategy.js?v=5.0.0"></script>
+</body>
+</html>

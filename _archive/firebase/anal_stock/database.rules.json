@@ -1,0 +1,10 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "stocks": { ".read": true },
+    "flows": { ".read": true },
+    "meta": { ".read": true },
+    "fund_snapshots": { ".read": false }
+  }
+}

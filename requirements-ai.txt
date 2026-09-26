@@ -1,0 +1,7 @@
+# Chỉ cần khi huấn luyện / dự báo AI trên máy
+-r requirements.txt
+scikit-learn>=1.3
+joblib>=1.3
+tensorflow>=2.16
+matplotlib>=3.8
+pytest>=8.0

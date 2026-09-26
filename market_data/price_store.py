@@ -1,0 +1,182 @@
+"""Kho giá ngày cục bộ dùng chung cho Smart Money và AI: `data/prices/{MÃ}.csv`.
+
+Mỗi lần cập nhật chỉ tải những ngày còn thiếu từ SSI:
+- Đã có đủ tới phiên gần nhất → không gọi mạng.
+- Thiếu → tải từ (ngày cuối − `overlap` ngày) và so khớp đoạn chồng lấn. Nếu giá cũ bị lệch
+  (SSI đã điều chỉnh lại quá khứ do cổ tức / thưởng cổ phiếu) → tải lại toàn bộ lịch sử mã đó,
+  tránh bước nhảy giá giả tại điểm nối.
+- Nến của phiên đang giao dịch (trước 15:05) không được lưu.
+
+Giá đơn vị nghìn VND, đã điều chỉnh.
+"""
+
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import pandas as pd
+import requests
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+PRICE_DIR = ROOT_DIR / "data" / "prices"
+VN_TZ = "Asia/Ho_Chi_Minh"
+HISTORY_START = "2000-01-01"
+SSI_HISTORY_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
+COLUMNS = ["time", "open", "high", "low", "close", "volume"]
+MARKET_CLOSE = (15, 5)
+OVERLAP_DAYS = 10
+ADJUST_TOLERANCE = 0.005  # lệch > 0.5% ở đoạn chồng lấn → giá đã được điều chỉnh lại
+
+_session = requests.Session()
+_session.headers.update({"User-Agent": "Mozilla/5.0"})
+_file_locks = {}
+_locks_guard = threading.Lock()
+
+
+def _lock_for(ticker):
+    with _locks_guard:
+        return _file_locks.setdefault(ticker, threading.Lock())
+
+
+def now_vn():
+    return pd.Timestamp.now(tz=VN_TZ)
+
+
+def last_complete_session(now=None):
+    """Ngày phiên giao dịch gần nhất đã đóng cửa (bỏ qua cuối tuần; ngày lễ tự xử lý vì SSI không trả nến)."""
+    now = now or now_vn()
+    day = now.normalize().tz_localize(None)
+    if (now.hour, now.minute) < MARKET_CLOSE:
+        day -= pd.Timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= pd.Timedelta(days=1)
+    return day
+
+
+def fetch_ssi(ticker, start, end, retries=3):
+    """Tải nến ngày từ SSI trong [start, end]. Trả DataFrame (có thể rỗng) hoặc None nếu lỗi mạng."""
+    params = {
+        "resolution": "1D",
+        "symbol": ticker,
+        "from": int(pd.Timestamp(start).tz_localize(VN_TZ).timestamp()),
+        "to": int((pd.Timestamp(end) + pd.Timedelta(days=1)).tz_localize(VN_TZ).timestamp()),
+    }
+    for attempt in range(retries):
+        try:
+            resp = _session.get(SSI_HISTORY_URL, params=params, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json().get("data") or {}
+                if not data.get("t"):
+                    return pd.DataFrame(columns=COLUMNS)
+                df = pd.DataFrame(
+                    {
+                        "time": pd.to_datetime(data["t"], unit="s", utc=True).tz_convert(VN_TZ).tz_localize(None).normalize(),
+                        "open": pd.to_numeric(data.get("o"), errors="coerce"),
+                        "high": pd.to_numeric(data.get("h"), errors="coerce"),
+                        "low": pd.to_numeric(data.get("l"), errors="coerce"),
+                        "close": pd.to_numeric(data.get("c"), errors="coerce"),
+                        "volume": pd.to_numeric(data.get("v"), errors="coerce"),
+                    }
+                )
+                return df.dropna(subset=["close"]).drop_duplicates("time").sort_values("time").reset_index(drop=True)
+        except (requests.RequestException, ValueError):
+            pass
+        time.sleep(1.5 * (attempt + 1))
+    return None
+
+
+def path_for(ticker):
+    return PRICE_DIR / f"{ticker.upper()}.csv"
+
+
+def load(ticker):
+    path = path_for(ticker)
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, parse_dates=["time"])
+    return df if not df.empty else None
+
+
+def _save(ticker, df):
+    PRICE_DIR.mkdir(parents=True, exist_ok=True)
+    df[COLUMNS].to_csv(path_for(ticker), index=False)
+
+
+def update_ticker(ticker, session_date=None, fetch=fetch_ssi, history_start=HISTORY_START):
+    """Cập nhật một mã. Trả (DataFrame | None, trạng thái)."""
+    ticker = ticker.upper()
+    session_date = session_date or last_complete_session()
+    today = now_vn().strftime("%Y-%m-%d")
+    with _lock_for(ticker):
+        current = load(ticker)
+        if current is not None and current["time"].max() >= session_date:
+            return current, "cached"
+
+        if current is None:
+            fresh = fetch(ticker, history_start, today)
+            if fresh is None:
+                return None, "failed"
+            result, status = fresh, "full"
+        else:
+            last = current["time"].max()
+            recent = fetch(ticker, (last - pd.Timedelta(days=OVERLAP_DAYS)).strftime("%Y-%m-%d"), today)
+            if recent is None:
+                return current, "failed"
+            overlap = current.merge(recent, on="time", suffixes=("_old", "_new"))
+            drift = (overlap["close_new"] / overlap["close_old"] - 1).abs().max() if len(overlap) else 0.0
+            if drift > ADJUST_TOLERANCE:
+                full = fetch(ticker, history_start, today)
+                if full is None:
+                    return current, "failed"
+                result, status = full, "readjusted"
+            else:
+                result = pd.concat([current, recent[recent["time"] > last]], ignore_index=True)
+                status = "appended" if (recent["time"] > last).any() else "no_new_data"
+
+        # Không lưu nến phiên chưa đóng cửa
+        result = result[result["time"] <= session_date].sort_values("time").reset_index(drop=True)
+        if result.empty:
+            return None, "empty"
+        _save(ticker, result)
+        return result, status
+
+
+def update_many(tickers, workers=6, session_date=None):
+    """Cập nhật nhiều mã song song. Trả (dict mã → DataFrame | None, thống kê trạng thái)."""
+    session_date = session_date or last_complete_session()
+    tickers = sorted({t.upper() for t in tickers if t})
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(lambda t: (t, *update_ticker(t, session_date)), tickers))
+    frames = {t: df for t, df, _ in results}
+    stats = {}
+    for t, _, status in results:
+        stats.setdefault(status, []).append(t)
+    return frames, stats
+
+
+def describe_stats(stats):
+    labels = {
+        "cached": "đã đủ",
+        "appended": "bổ sung ngày thiếu",
+        "no_new_data": "không có phiên mới",
+        "full": "tải toàn bộ",
+        "readjusted": "tải lại do điều chỉnh giá",
+        "failed": "lỗi",
+        "empty": "không có dữ liệu",
+    }
+    return ", ".join(f"{labels.get(k, k)} {len(v)}" for k, v in sorted(stats.items()))
+
+
+def seed_from_master(master_csv):
+    """Khởi tạo kho giá từ file tổng hợp có sẵn (tránh tải lại lần đầu)."""
+    master_csv = Path(master_csv)
+    if not master_csv.exists():
+        return 0
+    master = pd.read_csv(master_csv, parse_dates=["time"])
+    count = 0
+    for ticker, group in master.groupby("ticker"):
+        if not path_for(ticker).exists():
+            _save(ticker, group.sort_values("time"))
+            count += 1
+    return count

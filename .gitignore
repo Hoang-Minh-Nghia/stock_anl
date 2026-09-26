@@ -1,0 +1,17 @@
+# Kho giá: tải lại từ SSI được, không cần lưu trong repo (GitHub Actions dùng cache)
+data/prices/
+
+# Dữ liệu & mô hình AI (rất nặng, tạo lại được trên máy)
+ai_stock/data/
+ai_stock/model_data/
+ai_stock/models/*.png
+ai_stock/models/predictions_latest.csv
+
+# Bản sao lưu cục bộ
+_backup/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.env

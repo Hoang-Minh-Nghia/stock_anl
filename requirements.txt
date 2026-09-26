@@ -1,0 +1,4 @@
+# Đủ để chạy Smart Money + dashboard (dùng cho GitHub Actions)
+pandas>=2.0
+numpy>=1.26
+requests>=2.31

@@ -1,0 +1,43 @@
+# Checklist dự án phân tích chứng khoán (chạy cục bộ)
+
+`[x]` đã làm và kiểm tra · `[ ]` bạn cần tự làm / tự quyết
+
+## A. Dòng tiền quỹ (Smart Money)
+- [x] A1. Lấy danh sách quỹ qua API `products/filter` (68 quỹ, quét cả quỹ trái phiếu/cân bằng có nắm CP) — trước bỏ sót quỹ ID > 80
+- [x] A2. Tải song song + retry; quỹ lỗi mạng giữ danh mục kỳ trước; quỹ ngừng công bố không tính là đang nắm
+- [x] A3. Lưu số cổ phiếu, ngày báo cáo; tính dòng tiền theo **kỳ báo cáo** bằng thay đổi số CP × giá
+- [x] A4. Xử lý chia tách/thưởng CP, giới hạn top 10, kỳ chuyển tiếp 1 ngày, lần chạy đầu không có tín hiệu giả
+- [x] A5. Mỗi ngày 1 snapshot; cảnh báo khi hai lần chạy cách nhau > 35 ngày (có thể lỡ kỳ báo cáo)
+
+## B. Chấm điểm
+- [x] B1. Giá mục tiêu ≤ 180 ngày (trung vị), thiếu → trung lập; lọc thanh khoản theo GTGD, thiếu → loại
+- [x] B2. Mô hình đa nhân tố v4, xếp hạng trong ngành, `Data_Coverage`, loại ETF
+- [x] B3. Phân nhóm theo từ khoá ngành FMarket + Simplize
+- [x] B4. Công cụ IC `tools/evaluate_scores.py` (điểm cũ v3: IC 0.04, t=0.9 — không có ý nghĩa); trọng số v4 theo IC 3 & 14 năm
+
+## C. Chạy cục bộ (bỏ Firebase)
+- [x] C1. Kho giá dùng chung `data/prices/`: chỉ tải ngày thiếu, tự tải lại khi giá quá khứ bị điều chỉnh, không lưu nến chưa đóng cửa
+- [x] C2. Bỏ toàn bộ code Firebase; kết quả lưu `anal_stock/public/data/runs/{ngày}.json` + CSV
+- [x] C3. Chuyển 177 ngày điểm số từ Firebase về máy (đã kiểm tra IC khớp số liệu cũ)
+- [x] C4. `run.py` chạy tất cả + mở dashboard; `Chay_phan_tich.bat` bấm đúp là chạy
+- [x] C5. Lần chạy lặp lại trong ngày không tải lại giá (100/100 mã "đã đủ")
+- [x] C6. Cấu hình Firebase cũ chuyển vào `_archive/firebase/`
+- [ ] C7. **Bạn tự quyết**: dữ liệu vẫn còn trên Firebase (project `stock-trading-ad193`, có thể đang cho ghi công khai). Nếu không dùng nữa, vào Firebase Console xoá Realtime Database / Hosting hoặc xoá project
+
+## D. Dashboard
+- [x] D1. Đọc file cục bộ (tải ~0,1 giây), ô chọn ngày xem lại lịch sử, giữ ngày khi chuyển trang
+- [x] D2. Chống XSS, CSS/JS dùng chung, bảng sort riêng, tìm kiếm/lọc, bảng chi tiết từng mã
+- [x] D3. Trang dòng tiền: kỳ so sánh, quỹ ↔ mã, trạng thái quỹ; trang nhóm chiến lược tiếng Việt có dấu
+- [x] D4. Cảnh báo dữ liệu cũ / mô hình cũ; kiểm tra hiển thị mobile
+
+## E. AI (LSTM)
+- [x] E1. Dùng kho giá cục bộ (bỏ vnstock — nguồn VCI đang timeout)
+- [x] E2. Mục tiêu lợi nhuận 5 phiên, feature dừng, Train/Val/Test có purge, dataset 22 MB
+- [x] E3. Đánh giá vs baseline; `predict_future.py` cảnh báo khi không vượt baseline
+- [x] E4. Kết quả hiện tại: Test IC 0.019 (t=1.1) — **chưa vượt baseline**, chỉ tham khảo
+- [ ] E5. **Bạn tự quyết**: xoá `ai_stock/model_data/X_*.npy`, `y_*.npy` (~1,25 GB, định dạng cũ không còn dùng)
+
+## F. Kiểm thử & tài liệu
+- [x] F1. 37 unit test (kho giá, dòng tiền, chấm điểm, phân nhóm, feature AI không look-ahead)
+- [x] F2. `README.md` hướng dẫn chạy cục bộ
+- [x] F3. Sao lưu mã nguồn gốc `_backup/2026-09-15_truoc_nang_cap/`
