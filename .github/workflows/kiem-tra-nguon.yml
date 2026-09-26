@@ -14,41 +14,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
 
-      - name: Thử từng nguồn dữ liệu
+      - name: Dò bằng chính code của dự án
         run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-          TO=$(date +%s); FROM=$((TO - 3000000))
-          OUT=ket-qua-do-nguon.txt
-          echo "Do luc: $(date -u) | IP: $(curl -s --max-time 10 https://api.ipify.org) | $(curl -s --max-time 10 https://ipinfo.io/country)" > $OUT
-          echo "" >> $OUT
+          python - <<'PY' 2>&1 | tee ket-qua-do-nguon.txt
+          import time, json, requests
+          from market_data import price_store as ps
 
-          thu() {
-            ten="$1"; shift
-            ket=$(curl -s -o /tmp/body -w "%{http_code}|%{size_download}|%{time_total}" --max-time 25 -A "$UA" "$@" 2>/dev/null || echo "LOI|0|0")
-            dau=$(head -c 160 /tmp/body | tr -d '\n' | tr -d '\r')
-            printf "%-28s %s\n    %s\n" "$ten" "$ket" "$dau" >> $OUT
-          }
+          print("IP:", requests.get("https://api.ipify.org", timeout=10).text)
+          print()
 
-          thu "SSI-history"   "https://iboard-api.ssi.com.vn/statistics/charts/history?resolution=1D&symbol=HPG&from=$FROM&to=$TO"
-          thu "SSI-time"      "https://iboard-query.ssi.com.vn/system/time"
-          thu "TCBS-bars"     "https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term?ticker=HPG&type=stock&resolution=D&to=$TO&countBack=300"
-          thu "VNDIRECT"      "https://finfo-api.vndirect.com.vn/v4/stock_prices?sort=date&q=code:HPG~date:gte:2026-08-01&size=20"
-          thu "Vietcap-chart" -X POST -H "Content-Type: application/json" \
-              -d "{\"timeFrame\":\"ONE_DAY\",\"symbols\":[\"HPG\"],\"from\":$FROM,\"to\":$TO}" \
-              "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap"
-          thu "FMarket"       -X POST -H "Content-Type: application/json" -H "Referer: https://fmarket.vn/" \
-              -d '{"types":["NEW_FUND","TRADING_FUND"],"page":1,"pageSize":5,"isIpo":false,"issuerIds":[],"fundAssetTypes":[],"bondRemainPeriods":[],"searchField":"","isBuyByReward":false,"thirdAppIds":[],"sortOrder":"DESC","sortField":"navTo6Months"}' \
-              "https://api.fmarket.vn/res/products/filter"
-          thu "Simplize"      "https://simplize.vn/"
-          thu "CafeF-history" "https://s.cafef.vn/Ajax/PageNew/DataHistory/PriceHistory.ashx?Symbol=HPG&StartDate=&EndDate=&PageIndex=1&PageSize=20"
+          for ten, ham in (("SSI", ps.fetch_ssi), ("Vietcap", ps.fetch_vietcap)):
+              t0 = time.time()
+              df = ham("HPG", "2026-01-01", "2026-09-26")
+              print(f"{ten:8} 1 ma: {'None (loi/chan)' if df is None else str(len(df)) + ' nen'} trong {time.time()-t0:.1f}s")
 
-          cat $OUT
+          # Thu goi nhieu ma lien tiep de phat hien chan theo tan suat
+          ma_list = ["HPG","VCB","FPT","MBB","VNM","SSI","MWG","HDB","CTG","VPB","ACB","TCB"]
+          for ten, ham in (("Vietcap", ps.fetch_vietcap), ("SSI", ps.fetch_ssi)):
+              t0 = time.time(); ok = loi = 0
+              for m in ma_list:
+                  df = ham(m, "2026-01-01", "2026-09-26")
+                  if df is None: loi += 1
+                  else: ok += 1
+              print(f"{ten:8} {len(ma_list)} ma tuan tu: ok={ok} loi={loi} trong {time.time()-t0:.1f}s")
 
-      - name: Lưu kết quả vào repo
+          # Giong het pipeline: song song 6 luong, lich su day du
+          ps.reset_sources()
+          t0 = time.time()
+          frames, stats = ps.update_many(ma_list, workers=6)
+          print(f"\nupdate_many 6 luong, lich su day du: {time.time()-t0:.1f}s")
+          print("  ket qua:", {k: len(v) for k, v in stats.items()})
+          print("  nguon:", ps.source_report())
+          PY
+
+      - name: Lưu kết quả
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ket-qua-do-nguon.txt
-          git commit -m "Ket qua do nguon du lieu" || echo "khong doi"
+          git commit -m "Ket qua do nguon (qua code du an)" || echo "khong doi"
           git pull --rebase --autostash && git push
