@@ -19,37 +19,32 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
 
-      - name: Dò bằng chính code của dự án
+      - name: So sánh từng kịch bản tải Vietcap
         run: |
           python - <<'PY' 2>&1 | tee ket-qua-do-nguon.txt
-          import time, json, requests
+          import time
+          from concurrent.futures import ThreadPoolExecutor
           from market_data import price_store as ps
 
-          print("IP:", requests.get("https://api.ipify.org", timeout=10).text)
-          print()
+          MA = ["HPG","VCB","FPT","MBB","VNM","SSI","MWG","HDB","CTG","VPB","ACB","TCB"]
 
-          for ten, ham in (("SSI", ps.fetch_ssi), ("Vietcap", ps.fetch_vietcap)):
+          def thu(ten, tickers, start, workers):
               t0 = time.time()
-              df = ham("HPG", "2026-01-01", "2026-09-26")
-              print(f"{ten:8} 1 ma: {'None (loi/chan)' if df is None else str(len(df)) + ' nen'} trong {time.time()-t0:.1f}s")
+              if workers == 1:
+                  kq = [ps.fetch_vietcap(m, start, "2026-09-26") for m in tickers]
+              else:
+                  with ThreadPoolExecutor(max_workers=workers) as ex:
+                      kq = list(ex.map(lambda m: ps.fetch_vietcap(m, start, "2026-09-26"), tickers))
+              loi = sum(1 for d in kq if d is None)
+              nen = max((len(d) for d in kq if d is not None), default=0)
+              print(f"{ten:52} loi={loi}/{len(tickers)} | nen toi da={nen} | {time.time()-t0:.1f}s")
 
-          # Thu goi nhieu ma lien tiep de phat hien chan theo tan suat
-          ma_list = ["HPG","VCB","FPT","MBB","VNM","SSI","MWG","HDB","CTG","VPB","ACB","TCB"]
-          for ten, ham in (("Vietcap", ps.fetch_vietcap), ("SSI", ps.fetch_ssi)):
-              t0 = time.time(); ok = loi = 0
-              for m in ma_list:
-                  df = ham(m, "2026-01-01", "2026-09-26")
-                  if df is None: loi += 1
-                  else: ok += 1
-              print(f"{ten:8} {len(ma_list)} ma tuan tu: ok={ok} loi={loi} trong {time.time()-t0:.1f}s")
-
-          # Giong het pipeline: song song 6 luong, lich su day du
-          ps.reset_sources()
-          t0 = time.time()
-          frames, stats = ps.update_many(ma_list, workers=6)
-          print(f"\nupdate_many 6 luong, lich su day du: {time.time()-t0:.1f}s")
-          print("  ket qua:", {k: len(v) for k, v in stats.items()})
-          print("  nguon:", ps.source_report())
+              
+          thu("Tuan tu,  tu 2024 (2 nam)", MA, "2024-01-01", 1)
+          thu("Tuan tu,  tu 2000 (day du)", MA, "2000-01-01", 1)
+          thu("3 luong,  tu 2000 (day du)", MA, "2000-01-01", 3)
+          thu("6 luong,  tu 2000 (day du)", MA, "2000-01-01", 6)
+          thu("6 luong,  tu 2024 (2 nam)", MA, "2024-01-01", 6)
           PY
 
       - name: Lưu kết quả
