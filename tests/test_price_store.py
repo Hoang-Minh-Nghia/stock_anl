@@ -127,3 +127,44 @@ def test_ca_hai_nguon_hong_thi_tra_none(monkeypatch):
     monkeypatch.setitem(price_store.FETCHERS, "ssi", lambda *a, **k: None)
     monkeypatch.setitem(price_store.FETCHERS, "vietcap", lambda *a, **k: None)
     assert price_store.fetch_auto("AAA", "2026-01-01", "2026-09-25") is None
+
+
+def test_parse_vietcap_batch_tach_theo_ma():
+    payload = [
+        {"symbol": "HPG", "t": ["1788912000"], "o": [21900], "h": [22200], "l": [21850], "c": [22050], "v": [100]},
+        {"symbol": "VCB", "t": ["1788912000"], "o": [60000], "h": [61000], "l": [59500], "c": [60500], "v": [200]},
+    ]
+    d = price_store.parse_vietcap_batch(payload)
+    assert set(d) == {"HPG", "VCB"}
+    assert d["HPG"]["close"].iloc[0] == pytest.approx(22.05)
+    assert d["VCB"]["close"].iloc[0] == pytest.approx(60.5)
+
+
+def test_update_many_lay_theo_lo_thay_vi_goi_tung_ma(monkeypatch):
+    """90 mã phải đi trong vài lượt gọi, không phải mỗi mã một lượt (nguồn chặn theo số lượt)."""
+    price_store.reset_sources()
+    tickers = [f"T{i:03d}" for i in range(65)]
+    lo_da_goi = []
+
+    def batch(ms, start, end, retries=2):
+        lo_da_goi.append(list(ms))
+        return {m.upper(): bars("2026-01-01", "2026-09-25") for m in ms}
+
+    monkeypatch.setattr(price_store, "fetch_vietcap_batch", batch)
+    monkeypatch.setattr(price_store, "fetch_auto", lambda *a, **k: pytest.fail("không được gọi lẻ từng mã"))
+
+    frames, stats = price_store.update_many(tickers, workers=2, session_date=pd.Timestamp("2026-09-25"))
+    assert stats.get("full") and len(stats["full"]) == 65
+    assert all(frames[t] is not None for t in tickers)
+    assert len(lo_da_goi) == 3                      # 65 mã / 30 mã mỗi lượt
+    assert sum(len(x) for x in lo_da_goi) == 65
+
+
+def test_kho_da_du_thi_khong_goi_mang(monkeypatch):
+    price_store.reset_sources()
+    fake = FakeSSI(bars("2026-01-01", "2026-09-25"))
+    price_store.update_ticker("AAA", session_date=pd.Timestamp("2026-09-25"), fetch=fake)
+    monkeypatch.setattr(price_store, "fetch_vietcap_batch", lambda *a, **k: pytest.fail("không được gọi mạng"))
+    monkeypatch.setattr(price_store, "fetch_auto", lambda *a, **k: pytest.fail("không được gọi mạng"))
+    _, stats = price_store.update_many(["AAA"], session_date=pd.Timestamp("2026-09-25"))
+    assert stats == {"cached": ["AAA"]}

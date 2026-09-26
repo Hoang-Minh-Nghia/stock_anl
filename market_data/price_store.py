@@ -30,7 +30,8 @@ HISTORY_START = "2000-01-01"
 SSI_HISTORY_URL = "https://iboard-api.ssi.com.vn/statistics/charts/history"
 VIETCAP_CHART_URL = "https://trading.vietcap.com.vn/api/chart/OHLCChart/gap"
 MAX_SOURCE_FAILURES = 3
-MAX_UPDATE_SECONDS = 600  # tổng thời gian tối đa cho bước cập nhật giá   # một nguồn lỗi liên tiếp bấy nhiêu lần (chưa lần nào thành công) thì bỏ qua
+MAX_UPDATE_SECONDS = 600  # tổng thời gian tối đa cho bước cập nhật giá
+BATCH_SIZE = 30           # số mã lấy trong một request tới Vietcap   # một nguồn lỗi liên tiếp bấy nhiêu lần (chưa lần nào thành công) thì bỏ qua
 COLUMNS = ["time", "open", "high", "low", "close", "volume"]
 MARKET_CLOSE = (15, 5)
 OVERLAP_DAYS = 10
@@ -160,6 +161,39 @@ def _throttle(name):
         time.sleep(cho)
 
 
+def parse_vietcap_batch(payload):
+    """Vietcap trả về một mảng cho mỗi mã → tách thành dict mã → DataFrame."""
+    ket_qua = {}
+    for d in payload if isinstance(payload, list) else []:
+        ma = str(d.get("symbol") or "").upper()
+        if ma and d.get("t"):
+            ket_qua[ma] = _frame_from_arrays(
+                d["t"], d.get("o"), d.get("h"), d.get("l"), d.get("c"), d.get("v"), price_divisor=1000.0
+            )
+    return ket_qua
+
+
+def fetch_vietcap_batch(tickers, start, end, retries=2):
+    """Lấy nhiều mã trong MỘT request (Vietcap nhận danh sách `symbols`).
+
+    Đây là cách tránh bị chặn: nguồn giới hạn theo số lượt gọi, nên 90 mã đi trong 3 lượt
+    thay vì 90 lượt. Trả None nếu nguồn không dùng được.
+    """
+    frm, to = _range(start, end)
+    body = {"timeFrame": "ONE_DAY", "symbols": [t.upper() for t in tickers], "from": frm, "to": to}
+    for attempt in range(retries):
+        try:
+            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=60)
+            if resp.status_code == 200:
+                return parse_vietcap_batch(resp.json())
+            if resp.status_code in (401, 403):
+                return None
+        except (requests.RequestException, ValueError):
+            pass
+        time.sleep(2 * (attempt + 1))
+    return None
+
+
 FETCHERS = {"ssi": fetch_ssi, "vietcap": fetch_vietcap}
 SOURCE_ORDER = ("ssi", "vietcap")
 _source_stats = {}
@@ -272,11 +306,13 @@ def update_many(tickers, workers=4, session_date=None, history_start=HISTORY_STA
     reset_sources()   # mỗi lần chạy thử lại từ đầu: nguồn hôm qua bị chặn hôm nay có thể dùng được
     tickers = sorted({t.upper() for t in tickers if t})
     han_chot = time.monotonic() + MAX_UPDATE_SECONDS
+    prefetched, batch_start = _lay_theo_lo(tickers, session_date, history_start)
 
     def mot_ma(t):
         if time.monotonic() > han_chot:   # hết giờ: giữ dữ liệu cũ, không để job treo
             return (t, load(t), "qua_gio")
-        return (t, *update_ticker(t, session_date, history_start=history_start))
+        fetch = _fetch_tu_lo(prefetched[t], batch_start) if t in prefetched else None
+        return (t, *update_ticker(t, session_date, fetch=fetch, history_start=history_start))
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         results = list(pool.map(mot_ma, tickers))
@@ -285,6 +321,49 @@ def update_many(tickers, workers=4, session_date=None, history_start=HISTORY_STA
     for t, _, status in results:
         stats.setdefault(status, []).append(t)
     return frames, stats
+
+
+def _lay_theo_lo(tickers, session_date, history_start):
+    """Tải trước theo lô cho các mã còn thiếu ngày. Trả (dict mã → DataFrame, ngày bắt đầu đã yêu cầu)."""
+    can_tai, som_nhat = [], None
+    for t in tickers:
+        cur = load(t)
+        if cur is None:
+            bat_dau = pd.Timestamp(history_start)
+        elif cur["time"].max() < session_date:
+            bat_dau = cur["time"].max() - pd.Timedelta(days=OVERLAP_DAYS)
+        else:
+            continue          # đã đủ dữ liệu, không cần gọi mạng
+        can_tai.append(t)
+        som_nhat = bat_dau if som_nhat is None else min(som_nhat, bat_dau)
+
+    if not can_tai:
+        return {}, None
+    ket_qua = {}
+    hom_nay = now_vn().strftime("%Y-%m-%d")
+    for i in range(0, len(can_tai), BATCH_SIZE):
+        lo = can_tai[i:i + BATCH_SIZE]
+        _throttle("vietcap")
+        data = fetch_vietcap_batch(lo, som_nhat.strftime("%Y-%m-%d"), hom_nay)
+        if data is None:      # nguồn không dùng được → quay về tải từng mã
+            _ghi_nhan("vietcap", False)
+            return ket_qua, som_nhat
+        _ghi_nhan("vietcap", True)
+        ket_qua.update(data)
+    return ket_qua, som_nhat
+
+
+def _fetch_tu_lo(df_co_san, batch_start):
+    """Dùng lại dữ liệu đã tải theo lô; chỉ gọi mạng khi cần khoảng XA HƠN lô đã tải.
+
+    So với `batch_start` (ngày đã yêu cầu khi tải lô) chứ không so với ngày đầu tiên có dữ liệu:
+    mã niêm yết muộn vẫn được coi là đã có đủ, không phải gọi lẻ.
+    """
+    def fetch(ticker, start, end, retries=2):
+        if df_co_san is not None and batch_start is not None and pd.Timestamp(start) >= batch_start:
+            return df_co_san[df_co_san["time"] >= pd.Timestamp(start)].reset_index(drop=True)
+        return fetch_auto(ticker, start, end)
+    return fetch
 
 
 def describe_stats(stats):
