@@ -119,20 +119,24 @@ def fetch_ssi(ticker, start, end, retries=2):
     return None
 
 
-def fetch_vietcap(ticker, start, end, retries=2):
-    """Nến ngày từ Vietcap (VCI)."""
+def fetch_vietcap(ticker, start, end, retries=3):
+    """Nến ngày từ Vietcap (VCI).
+
+    Vietcap giới hạn theo tần suất gọi: gọi dồn dập sẽ bị từ chối. Vì vậy chờ giữa các lần thử
+    và thử lại cả khi bị 429 thay vì bỏ cuộc ngay.
+    """
     frm, to = _range(start, end)
     body = {"timeFrame": "ONE_DAY", "symbols": [ticker], "from": frm, "to": to}
     for attempt in range(retries):
         try:
-            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=30)
+            resp = _session.post(VIETCAP_CHART_URL, json=body, timeout=45)
             if resp.status_code == 200:
                 return parse_vietcap(resp.json())
-            if resp.status_code in (401, 403, 429):
-                return None
+            if resp.status_code in (401, 403):
+                return None          # bị chặn hẳn, thử lại vô ích
         except (requests.RequestException, ValueError):
-            pass
-        time.sleep(1.5 * (attempt + 1))
+            pass                     # quá hạn / lỗi mạng → nghỉ rồi thử lại
+        time.sleep(3 * (attempt + 1))
     return None
 
 
@@ -237,13 +241,17 @@ def update_ticker(ticker, session_date=None, fetch=None, history_start=HISTORY_S
         return result, status
 
 
-def update_many(tickers, workers=6, session_date=None):
-    """Cập nhật nhiều mã song song. Trả (dict mã → DataFrame | None, thống kê trạng thái)."""
+def update_many(tickers, workers=4, session_date=None, history_start=HISTORY_START):
+    """Cập nhật nhiều mã song song. Trả (dict mã → DataFrame | None, thống kê trạng thái).
+
+    `history_start`: chỉ cần khi tải lần đầu một mã. Đặt gần hiện tại giúp tải nhanh và ít bị
+    nguồn từ chối (Smart Money chỉ cần ~400 ngày; pipeline AI mới cần toàn bộ lịch sử).
+    """
     session_date = session_date or last_complete_session()
     reset_sources()   # mỗi lần chạy thử lại từ đầu: nguồn hôm qua bị chặn hôm nay có thể dùng được
     tickers = sorted({t.upper() for t in tickers if t})
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        results = list(pool.map(lambda t: (t, *update_ticker(t, session_date)), tickers))
+        results = list(pool.map(lambda t: (t, *update_ticker(t, session_date, history_start=history_start)), tickers))
     frames = {t: df for t, df, _ in results}
     stats = {}
     for t, _, status in results:

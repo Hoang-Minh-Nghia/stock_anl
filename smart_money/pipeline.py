@@ -65,7 +65,11 @@ def run(save=True):
     full_history = pd.concat([history, current], ignore_index=True) if not history.empty else current
     all_tickers = sorted(full_history["Ma_Co_Phieu"].dropna().astype(str).str.upper().unique())
     log(f"2/5 Cập nhật giá {len(all_tickers) + 1} mã (chỉ tải ngày còn thiếu)...")
-    price_frames, price_stats = price_store.update_many(all_tickers + [config.BENCHMARK_SYMBOL])
+    price_frames, price_stats = price_store.update_many(
+        all_tickers + [config.BENCHMARK_SYMBOL],
+        workers=config.PRICE_WORKERS,
+        history_start=(now - pd.DateOffset(years=config.PRICE_STORE_YEARS)).strftime("%Y-%m-%d"),
+    )
     log(f"   {price_store.describe_stats(price_stats)} | nguồn: {price_store.source_report()}")
     price_map = {t: sources.to_market_frame(df) for t, df in price_frames.items()}
     benchmark = price_map.get(config.BENCHMARK_SYMBOL)

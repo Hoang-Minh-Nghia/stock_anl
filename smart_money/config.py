@@ -31,6 +31,8 @@ SSI_TIME_URL = "https://iboard-query.ssi.com.vn/system/time"
 
 BENCHMARK_SYMBOL = "VNINDEX"
 PRICE_HISTORY_LOOKBACK_DAYS = 400   # cửa sổ tính chỉ số giá/rủi ro
+PRICE_STORE_YEARS = 3               # độ sâu lịch sử cần tải khi gặp mã mới (đủ cho mọi chỉ số ở trên)
+PRICE_WORKERS = 3                   # ít luồng để không bị nguồn giá chặn theo tần suất
 HTTP_WORKERS = 6
 
 # --- Dòng tiền quỹ ---
