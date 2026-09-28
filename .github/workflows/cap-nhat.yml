@@ -4,6 +4,9 @@ on:
   schedule:
     # 09:00 UTC = 16:00 giờ VN (sau khi thị trường đóng cửa), thứ 2 - thứ 6
     - cron: "0 9 * * 1-5"
+    # Chạy lại lúc 18:00 giờ VN: nếu lượt 16:00 lỗi do nguồn dữ liệu chập chờn thì tự khắc phục,
+    # nếu lượt trước đã thành công thì lượt này chỉ cập nhật lại cùng ngày (không hại gì).
+    - cron: "0 11 * * 1-5"
   workflow_dispatch:        # cho phép bấm chạy tay trên GitHub
   push:                     # chạy lại ngay khi sửa code pipeline
     paths:

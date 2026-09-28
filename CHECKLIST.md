@@ -22,10 +22,11 @@
 - [x] C4. `run.py` chạy tất cả + mở dashboard; `Chay_phan_tich.bat` bấm đúp là chạy
 - [x] C5. Lần chạy lặp lại trong ngày không tải lại giá (100/100 mã "đã đủ")
 - [x] C6. Đã xoá toàn bộ cấu hình và code Firebase khỏi dự án
-- [ ] C7. **Bạn làm nốt**: database trên cloud vẫn còn (project `stock-trading-ad193`, đang đọc được công khai) — vào Firebase Console xoá Realtime Database / Hosting hoặc xoá cả project
+- [ ] C7. **Bạn làm nốt**: database Firebase trên cloud vẫn còn (project `stock-trading-ad193`, đang đọc được công khai) — vào Firebase Console xoá Realtime Database / Hosting hoặc xoá cả project
 
 ## C2. Chạy online (GitHub Actions + Pages)
-- [x] Workflow chạy 16:00 giờ VN các ngày trong tuần, commit dữ liệu vào repo, deploy GitHub Pages
+- [x] Workflow chạy 16:00 giờ VN các ngày trong tuần (+ lượt chạy lại 18:00 phòng lỗi tạm thời), commit dữ liệu vào repo, deploy GitHub Pages
+- [x] Dashboard tự hiện nút "Run workflow" khi dữ liệu quá 3 ngày; README có huy hiệu trạng thái
 - [x] Kho giá 2 nguồn: SSI (chạy ở VN) ↔ Vietcap (chạy được từ máy chủ nước ngoài), tự chuyển khi bị chặn
 - [x] Lấy giá theo lô 30 mã/request (Vietcap chặn theo số lượt gọi): 79 mã + lịch sử từ 2000 trong ~9 giây
 - [x] Chốt chặn: dưới 50% mã có giá → pipeline dừng; dưới 10 mã được chấm điểm → không deploy
