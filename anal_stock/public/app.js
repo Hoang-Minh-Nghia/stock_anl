@@ -1,7 +1,7 @@
 import {
   FACTORS, FLOW_STATUS, PALETTE, applyChartDefaults, createTable, esc, fmt, fmtPct, fmtVnd, groupTag, GROUPS,
   heatCell, loadData, loadHistory, modelLabel, num, renderStatus, scoreCell, signClass,
-} from "./common.js?v=5.0.2";
+} from "./common.js?v=5.1.0";
 
 const $ = (id) => document.getElementById(id);
 const state = { data: null, rows: [] };

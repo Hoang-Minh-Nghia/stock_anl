@@ -2,6 +2,7 @@
 // Dữ liệu do `python run.py` sinh ra trong ./data/: index.json, runs/{ngày}.json, score_history.json.
 
 const DATA_DIR = "./data";
+export const ACTIONS_URL = "https://github.com/Hoang-Minh-Nghia/stock_anl/actions/workflows/cap-nhat.yml";
 const TIMEOUT_MS = 15000;
 
 export const GROUPS = [
@@ -251,12 +252,19 @@ export function renderStatus(container, alertBox, data) {
   if (data.meta.legacy || data.stocks.some((s) => s.isLegacy)) {
     warnings.push("Ngày này dùng mô hình chấm điểm cũ (v3) — nhiều cột nhân tố và dòng tiền theo kỳ sẽ trống.");
   }
-  if (isLatest && ageDays > 7) warnings.push(`Dữ liệu đã cũ ${ageDays} ngày — chạy "python run.py" để cập nhật.`);
+  const qua_cu = isLatest && ageDays > 3;
+  if (qua_cu) warnings.push(`Dữ liệu đã cũ ${ageDays} ngày — lịch cập nhật tự động có thể đang lỗi.`);
 
   container.innerHTML = pills.join("");
   if (alertBox) {
     alertBox.hidden = warnings.length === 0;
-    alertBox.innerHTML = warnings.length ? `<strong>Lưu ý dữ liệu</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : "";
+    // Link là HTML tĩnh, nội dung cảnh báo vẫn được escape
+    const nut = qua_cu
+      ? `<div style="margin-top:8px">Mở <a href="${ACTIONS_URL}" target="_blank" rel="noopener">GitHub Actions</a> rồi bấm <b>Run workflow</b> để cập nhật ngay.</div>`
+      : "";
+    alertBox.innerHTML = warnings.length
+      ? `<strong>Lưu ý dữ liệu</strong><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>${nut}`
+      : "";
   }
 }
 
