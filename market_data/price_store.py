@@ -378,17 +378,3 @@ def describe_stats(stats):
         "qua_gio": "bỏ qua do hết thời gian",
     }
     return ", ".join(f"{labels.get(k, k)} {len(v)}" for k, v in sorted(stats.items()))
-
-
-def seed_from_master(master_csv):
-    """Khởi tạo kho giá từ file tổng hợp có sẵn (tránh tải lại lần đầu)."""
-    master_csv = Path(master_csv)
-    if not master_csv.exists():
-        return 0
-    master = pd.read_csv(master_csv, parse_dates=["time"])
-    count = 0
-    for ticker, group in master.groupby("ticker"):
-        if not path_for(ticker).exists():
-            _save(ticker, group.sort_values("time"))
-            count += 1
-    return count

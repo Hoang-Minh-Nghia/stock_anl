@@ -77,12 +77,8 @@ def evaluate_saved_scores(horizon):
 
 
 def evaluate_price_factors(horizon, years):
-    master_list = config.ROOT_DIR / "ai_stock" / "data" / "vn100_list.csv"
-    if master_list.exists():
-        tickers = pd.read_csv(master_list)["ticker"].tolist()
-    else:
-        latest = sorted(config.SNAPSHOT_DIR.glob("*.csv"))[-1]
-        tickers = sorted(pd.read_csv(latest)["Ma_Co_Phieu"].dropna().unique())
+    latest = sorted(config.SNAPSHOT_DIR.glob("*.csv"))[-1]
+    tickers = sorted(pd.read_csv(latest)["Ma_Co_Phieu"].dropna().unique())
     tickers = [t for t in tickers if not str(t).startswith(config.ETF_PREFIXES)]
     close = load_close(tickers)
     close = close[close.index >= pd.Timestamp.now() - pd.DateOffset(years=years)]

@@ -21,7 +21,7 @@
 - [x] C3. Nhập 177 ngày điểm số lịch sử về máy (đã kiểm tra IC khớp số liệu cũ)
 - [x] C4. `run.py` chạy tất cả + mở dashboard; `Chay_phan_tich.bat` bấm đúp là chạy
 - [x] C5. Lần chạy lặp lại trong ngày không tải lại giá (100/100 mã "đã đủ")
-- [x] C6. Đã xoá toàn bộ cấu hình và code Firebase khỏi dự án
+- [x] C6. Đã xoá toàn bộ Firebase và toàn bộ phần AI (LSTM) khỏi dự án
 - [ ] C7. **Bạn làm nốt**: database Firebase trên cloud vẫn còn (project `stock-trading-ad193`, đang đọc được công khai) — vào Firebase Console xoá Realtime Database / Hosting hoặc xoá cả project
 
 ## C2. Chạy online (GitHub Actions + Pages)
@@ -38,14 +38,7 @@
 - [x] D3. Trang dòng tiền: kỳ so sánh, quỹ ↔ mã, trạng thái quỹ; trang nhóm chiến lược tiếng Việt có dấu
 - [x] D4. Cảnh báo dữ liệu cũ / mô hình cũ; kiểm tra hiển thị mobile
 
-## E. AI (LSTM)
-- [x] E1. Dùng kho giá cục bộ (bỏ vnstock — nguồn VCI đang timeout)
-- [x] E2. Mục tiêu lợi nhuận 5 phiên, feature dừng, Train/Val/Test có purge, dataset 22 MB
-- [x] E3. Đánh giá vs baseline; `predict_future.py` cảnh báo khi không vượt baseline
-- [x] E4. Kết quả hiện tại: Test IC 0.019 (t=1.1) — **chưa vượt baseline**, chỉ tham khảo
-- [ ] E5. **Bạn tự quyết**: xoá `ai_stock/model_data/X_*.npy`, `y_*.npy` (~1,25 GB, định dạng cũ không còn dùng)
-
 ## F. Kiểm thử & tài liệu
-- [x] F1. 37 unit test (kho giá, dòng tiền, chấm điểm, phân nhóm, feature AI không look-ahead)
+- [x] F1. 41 unit test (kho giá, dòng tiền, chấm điểm, phân nhóm, feature AI không look-ahead)
 - [x] F2. `README.md` hướng dẫn chạy cục bộ
 - [x] F3. Sao lưu mã nguồn gốc `_backup/2026-09-15_truoc_nang_cap/`

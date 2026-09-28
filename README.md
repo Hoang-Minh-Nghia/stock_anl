@@ -64,15 +64,6 @@ git pull                 # lấy dữ liệu GitHub đã tạo
 python run.py --serve    # chạy + mở dashboard ở localhost
 ```
 
-Phần AI (LSTM dự báo lợi nhuận 5 phiên) hiện **chỉ chạy ở máy** và chưa vượt baseline trên tập test
-(IC 0.019), nên kết quả chỉ để tham khảo, không đưa lên web:
-
-```bash
-pip install -r requirements-ai.txt
-python ai_stock/process_data_for_lstm.py && python ai_stock/train_lstm_model.py
-python ai_stock/predict_future.py
-```
-
 Kiểm chứng thuật toán và chạy test:
 
 ```bash
